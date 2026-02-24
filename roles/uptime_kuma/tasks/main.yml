@@ -1,50 +1,65 @@
 ---
-- name: Install prerequisites
+- name: Install curl
   apt:
-    name:
-      - ca-certificates
-      - curl
+    name: curl
     state: present
     update_cache: yes
 
-- name: Add Docker GPG key
+- name: Install NVM
   shell: |
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-    chmod a+r /etc/apt/keyrings/docker.asc
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+  args:
+    creates: /root/.nvm/nvm.sh
 
-- name: Add Docker apt repository
+- name: Install Node.js via NVM
   shell: |
-    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list
+    export NVM_DIR="/root/.nvm"
+    source /root/.nvm/nvm.sh
+    nvm install 18
+    nvm use 18
+  args:
+    executable: /bin/bash
 
-- name: Install Docker CE
+- name: Install git
   apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-compose-plugin
+    name: git
     state: present
     update_cache: yes
 
-- name: Create data directory
-  file:
-    path: "{{ uptime_kuma_data_dir }}"
-    state: directory
-    mode: '0755'
+- name: Clone Uptime Kuma
+  git:
+    repo: https://github.com/louislam/uptime-kuma.git
+    dest: /opt/uptime-kuma
+    version: master
 
-- name: Install Python requests library
-  apt:
-    name: python3-requests
-    state: present
+- name: Install Uptime Kuma dependencies
+  shell: |
+    export NVM_DIR="/root/.nvm"
+    source /root/.nvm/nvm.sh
+    cd /opt/uptime-kuma && npm install --production
+  args:
+    executable: /bin/bash
 
-- name: Run Uptime Kuma container
-  community.docker.docker_container:
+- name: Create systemd service
+  copy:
+    dest: /etc/systemd/system/uptime-kuma.service
+    content: |
+      [Unit]
+      Description=Uptime Kuma
+      After=network.target
+
+      [Service]
+      Type=simple
+      WorkingDirectory=/opt/uptime-kuma
+      ExecStart=/root/.nvm/versions/node/v18/bin/node server/server.js
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Enable and start Uptime Kuma
+  systemd:
     name: uptime-kuma
-    image: louislam/uptime-kuma:1
+    enabled: yes
     state: started
-    restart_policy: always
-    ports:
-      - "{{ uptime_kuma_port }}:3001"
-    volumes:
-      - "{{ uptime_kuma_data_dir }}:/app/data"
+    daemon_reload: yes
