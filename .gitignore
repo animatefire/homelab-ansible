@@ -1,0 +1,27 @@
+# Ansible specific
+*.retry
+.ansible/
+
+# Sensitive vars
+group_vars/all/vault.yml
+host_vars/*/vault.yml
+*.vault
+.vault_pass
+
+# Inventory overrides
+inventories/production/
+inventories/local/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store

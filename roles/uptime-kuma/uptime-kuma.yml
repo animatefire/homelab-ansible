@@ -1,0 +1,5 @@
+---
+- hosts: uptime_kuma
+  become: true
+  roles:
+    - uptime_kuma
