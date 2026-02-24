@@ -1,9 +1,29 @@
 ---
-- name: Install dependencies
+- name: Install prerequisites
   apt:
     name:
-      - docker.io
-      - docker-compose
+      - ca-certificates
+      - curl
+    state: present
+    update_cache: yes
+
+- name: Add Docker GPG key
+  shell: |
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    chmod a+r /etc/apt/keyrings/docker.asc
+
+- name: Add Docker apt repository
+  shell: |
+    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list
+
+- name: Install Docker CE
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
     state: present
     update_cache: yes
 
@@ -13,13 +33,17 @@
     state: directory
     mode: '0755'
 
+- name: Install Python requests library
+  apt:
+    name: python3-requests
+    state: present
+
 - name: Run Uptime Kuma container
   community.docker.docker_container:
     name: uptime-kuma
     image: louislam/uptime-kuma:1
     state: started
     restart_policy: always
-    privileged: true
     ports:
       - "{{ uptime_kuma_port }}:3001"
     volumes:
